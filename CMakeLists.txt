@@ -42,16 +42,16 @@ list(APPEND ${PROJECT_NAME}_LINKED_LIBRARIES PRIVATE GTest::gmock_main)
 add_subdirectory(src)
 add_subdirectory(src_test)
 add_subdirectory(ExportParaview)
+add_subdirectory(ExportTxt)
 
-list(APPEND ${PROJECT_NAME}_sources ${src_sources} ${src_paraview_sources})
-list(APPEND ${PROJECT_NAME}_headers ${src_headers} ${src_paraview_headers})
-list(APPEND ${PROJECT_NAME}_includes ${src_includes} ${src_paraview_includes})
+list(APPEND ${PROJECT_NAME}_sources ${src_sources} ${src_paraview_sources} ${src_txt_sources})
+list(APPEND ${PROJECT_NAME}_headers ${src_headers} ${src_paraview_headers} ${src_txt_headers})
+list(APPEND ${PROJECT_NAME}_includes ${src_includes} ${src_paraview_includes} ${src_txt_includes})
 
 list(APPEND ${PROJECT_NAME}_TEST_sources ${${PROJECT_NAME}_sources} ${src_test_sources})
 list(APPEND ${PROJECT_NAME}_TEST_headers ${${PROJECT_NAME}_headers} ${src_test_headers})
 list(APPEND ${PROJECT_NAME}_TEST_includes ${${PROJECT_NAME}_includes} ${src_test_includes})
 
-#################### Copy file ################################
 
 
 ############################## Add executable ##################################################

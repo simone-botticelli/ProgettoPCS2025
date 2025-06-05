@@ -79,4 +79,8 @@ void addFace(
 
 GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n);
 
+void ComputeShortestPath(GeodesicPolyhedron& mesh, unsigned int source, unsigned int target);
+
+GeodesicPolyhedron dualize(const GeodesicPolyhedron& poly);
+
 }

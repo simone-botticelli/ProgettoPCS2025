@@ -1,7 +1,13 @@
-#include "PolyhedralMesh.hpp"
-#include "Eigen/Eigen"
 #include <iostream>
 #include <cassert>
+#include <queue>
+#include <limits>
+#include <iostream>
+#include <cmath>
+
+#include "PolyhedralMesh.hpp"
+#include "Eigen/Eigen"
+
 
 using namespace std;
 using namespace Eigen;
@@ -193,13 +199,7 @@ GeodesicCounts SetGeodesicCounts_ClassI(const PlatonicSolid& solid, const unsign
 	}
 }
 
-/*
-void BuildGoldberg(GeodesicPolyhedron& geodesic)
-{
-	// crea vicinato
-	// crea matrice centri
-}
-*/
+
 
 void addVertex(GeodesicPolyhedron& geodesic, unsigned int vertexId, const VectorXd& vertexCoordinates)
 {
@@ -320,6 +320,14 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 	
 	if (n == 1)
 	{
+		// copiare struttura solido platonico
+		geodesic.Cell1DsId = solid.EdgesId;
+		geodesic.Cell2DsId = solid.FacesId;
+		geodesic.Cell1DsExtrema = solid.EdgesExtrema;
+		geodesic.Cell2DsVertices = solid.FacesVertices;
+		geodesic.Cell2DsEdges = solid.FacesEdges;
+		geodesic.Cell3DsId = 0;
+		
 		return geodesic;
 	}
 	
@@ -422,7 +430,7 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 		double gamma = double(j) / n;
 		
 		// per ogni faccia del solido platonico:
-		for(int f = 0; f < 4; f++)
+		for(int f = 0; f < solid.NumFaces; f++)
 		{
 			
 			// creo gli alias di id_vertici principali (A, B, C) ! CONTROLLA CHE A,B,C SIANO SALVATI IN ORDINE CRESCENTE
@@ -456,8 +464,19 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 			
 					
 			// caso n = 2
-				
-				// ...
+			if(n==2){
+				addFace(geodesic, nextEdgeId, nextFaceId++, 
+							A, AB[0], AC[0]);
+				addFace(geodesic, nextEdgeId, nextFaceId++, 
+							B, AB[0], BC[0]);
+				addFace(geodesic, nextEdgeId, nextFaceId++, 
+							C, AC[0], BC[0]);
+				addFace(geodesic, nextEdgeId, nextFaceId++, 
+							BC[0], AB[0], AC[0]);
+							
+				continue;
+				}
+							
 				
 			// caso n > 2 
 				
@@ -651,6 +670,16 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 		}  // fine ciclo sulle facce 
 		  
 		  
+	// Normalizzazione
+	MatrixXd& M = geodesic.Cell0DsCoordinates;  // MatrixXd M(n, m) già inizializzata
+		// Normalizza ogni colonna in-place
+		for (int j = 0; j < M.cols(); ++j) {
+			double norm = M.col(j).norm();
+			if (norm > 1e-12) {
+				M.col(j) /= norm;
+			}
+		}
+
 		  
 	
 	
@@ -660,7 +689,221 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 	
 
 
+ void ComputeShortestPath(GeodesicPolyhedron& mesh, unsigned int source, unsigned int target) {
+    const int n = mesh.NumCell0Ds;
+    
+    // Verifica validità degli indici
+    if (source >= n || target >= n) {
+        cerr << "Errore: indici di vertice non validi. Source: " << source 
+                  << ", Target: " << target << ", NumVertices: " << n << "\n";
+        return;
+    }
+    
+    // Inizializzazione delle strutture dati
+    vector<double> dist(n, std::numeric_limits<double>::infinity());
+    vector<int> pred(n, -1);
+    vector<bool> visited(n, false);
+    
+    // Costruzione della lista di adiacenza per efficienza
+    vector<vector<pair<int, double>>> adj(n);
+    
+    for (unsigned int e = 0; e < mesh.NumCell1Ds; ++e) {
+        int v0 = mesh.Cell1DsExtrema(0, e);
+        int v1 = mesh.Cell1DsExtrema(1, e);
+        
+        // Calcola la distanza euclidea tra i vertici
+        double edge_length = (mesh.Cell0DsCoordinates.col(v0) - mesh.Cell0DsCoordinates.col(v1)).norm();
+        
+        // Aggiungi arco in entrambe le direzioni (grafo non diretto)
+        adj[v0].emplace_back(v1, edge_length);
+        adj[v1].emplace_back(v0, edge_length);
+    }
+    
+    // Algoritmo di Dijkstra
+    using P = std::pair<double, int>; // (distanza, nodo)
+    priority_queue<P, std::vector<P>, std::greater<P>> pq;
+    
+    dist[source] = 0.0;
+    pq.push({0.0, source});
+    
+    while (!pq.empty()) {
+        auto [d, u] = pq.top();
+        pq.pop();
+        
+        if (visited[u]) continue;
+        visited[u] = true;
+        
+        // Se abbiamo raggiunto il target, possiamo terminare
+        if (u == target) break;
+        
+        // Esplora tutti i vicini
+        for (const auto& [v, weight] : adj[u]) {
+            if (!visited[v] && dist[v] > dist[u] + weight) {
+                dist[v] = dist[u] + weight;
+                pred[v] = u;
+                pq.push({dist[v], v});
+            }
+        }
+    }
+    
+    // Verifica se esiste un percorso
+    if (pred[target] == -1 && target != source) {
+        cerr << "Nessun percorso trovato tra " << source << " e " << target << "\n";
+        return;
+    }
+    
+    // Inizializza i flag del percorso
+    mesh.Cell0DsShortPath.assign(n, false);
+    mesh.Cell1DsShortPath.assign(mesh.NumCell1Ds, false);
+    
+    // Ricostruisce il percorso
+    vector<unsigned int> path;
+    unsigned int v = target;
+    
+    while (v != source) {
+        path.push_back(v);
+        if (pred[v] == -1) break; // Sicurezza aggiuntiva
+        v = pred[v];
+    }
+    path.push_back(source);
+    
+    // Marca i vertici del percorso
+    for (unsigned int vertex : path) {
+        mesh.Cell0DsShortPath[vertex] = true;
+    }
+    
+    // Marca gli archi del percorso
+    unsigned int edge_count = 0;
+    for (int i = path.size() - 1; i > 0; --i) {
+        unsigned int u = path[i];
+        unsigned int v = path[i-1];
+        
+        // Trova l'arco tra u e v
+        for (unsigned int e = 0; e < mesh.NumCell1Ds; ++e) {
+            int a = mesh.Cell1DsExtrema(0, e);
+            int b = mesh.Cell1DsExtrema(1, e);
+            if ((a == u && b == v) || (a == v && b == u)) {
+                mesh.Cell1DsShortPath[e] = true;
+                ++edge_count;
+                break;
+            }
+        }
+    }
+    
+    // Output dei risultati
+    cout << "Cammino minimo trovato!\n";
+    cout << "Numero di lati: " << edge_count << "\n";
+    cout << "Lunghezza totale: " << dist[target] << "\n";
+    
+    // Stampa il percorso
+    cout << "Percorso: ";
+    for (int i = path.size() - 1; i >= 0; --i) {
+        std::cout << path[i];
+        if (i > 0) std::cout << " -> ";
+    }
+    cout << "\n";
 
+}
+
+GeodesicPolyhedron dualize(const GeodesicPolyhedron& poly)
+{
+    GeodesicPolyhedron dual;
+    
+    // Il duale ha: vertici = facce originali, facce = vertici originali
+    dual.NumCell0Ds = poly.NumCell2Ds;
+    dual.NumCell2Ds = poly.NumCell0Ds;
+    dual.NumCell1Ds = poly.NumCell1Ds;
+    
+    // Inizializza strutture
+    dual.Cell0DsId.resize(dual.NumCell0Ds);
+    dual.Cell2DsId.resize(dual.NumCell2Ds);
+    dual.Cell1DsId.resize(dual.NumCell1Ds);
+    for(unsigned int i = 0; i < dual.NumCell0Ds; i++) dual.Cell0DsId[i] = i;
+    for(unsigned int i = 0; i < dual.NumCell2Ds; i++) dual.Cell2DsId[i] = i;
+    for(unsigned int i = 0; i < dual.NumCell1Ds; i++) dual.Cell1DsId[i] = i;
+    
+    dual.Cell0DsShortPath.resize(dual.NumCell0Ds, false);
+    dual.Cell1DsShortPath.resize(dual.NumCell1Ds, false);
+    dual.Cell3DsId = 0;
+    
+    // 1. Nuovi vertici = baricentri delle facce originali
+    dual.Cell0DsCoordinates.resize(3, dual.NumCell0Ds);
+    
+    for(unsigned int f = 0; f < poly.NumCell2Ds; f++) {
+        VectorXd centroid = VectorXd::Zero(3);
+        
+        // Calcola baricentro della faccia f
+        for(unsigned int v : poly.Cell2DsVertices[f]) {
+            centroid += poly.Cell0DsCoordinates.col(v);
+        }
+        centroid /= poly.Cell2DsVertices[f].size();
+        
+        // Proietta sulla sfera unitaria
+        dual.Cell0DsCoordinates.col(f) = centroid.normalized();
+    }
+    
+    // 2. Nuovi lati = connessioni tra facce originali adiacenti
+    dual.Cell1DsExtrema.resize(2, dual.NumCell1Ds);
+    
+    for(unsigned int e = 0; e < poly.NumCell1Ds; e++) {
+        // Trova le 2 facce che condividono il lato e
+        vector<unsigned int> faces_with_edge;
+        
+        for(unsigned int f = 0; f < poly.NumCell2Ds; f++) {
+            for(unsigned int edge : poly.Cell2DsEdges[f]) {
+                if(edge == e) {
+                    faces_with_edge.push_back(f);
+                    break;
+                }
+            }
+        }
+        
+        // Connetti i baricentri di queste 2 facce
+        if(faces_with_edge.size() == 2) {
+            dual.Cell1DsExtrema(0, e) = faces_with_edge[0];
+            dual.Cell1DsExtrema(1, e) = faces_with_edge[1];
+        }
+    }
+    
+    // 3. Nuove facce = una per ogni vertice originale
+    dual.Cell2DsVertices.resize(dual.NumCell2Ds);
+    dual.Cell2DsEdges.resize(dual.NumCell2Ds);
+    
+    for(unsigned int v = 0; v < poly.NumCell0Ds; v++) {
+        // Trova tutte le facce che contengono il vertice v
+        vector<unsigned int> faces_around_vertex;
+        
+        for(unsigned int f = 0; f < poly.NumCell2Ds; f++) {
+            for(unsigned int vertex : poly.Cell2DsVertices[f]) {
+                if(vertex == v) {
+                    faces_around_vertex.push_back(f);
+                    break;
+                }
+            }
+        }
+        
+        dual.Cell2DsVertices[v] = faces_around_vertex;
+        
+        // Trova i lati della nuova faccia
+        vector<unsigned int> face_edges;
+        for(unsigned int e = 0; e < dual.NumCell1Ds; e++) {
+            unsigned int v1 = dual.Cell1DsExtrema(0, e);
+            unsigned int v2 = dual.Cell1DsExtrema(1, e);
+            
+            // Se entrambi i vertici del lato sono nella faccia
+            bool has_v1 = false, has_v2 = false;
+            for(unsigned int fv : faces_around_vertex) {
+                if(fv == v1) has_v1 = true;
+                if(fv == v2) has_v2 = true;
+            }
+            if(has_v1 && has_v2) {
+                face_edges.push_back(e);
+            }
+        }
+        dual.Cell2DsEdges[v] = face_edges;
+    }
+	return dual;
+}
 
 }
 
