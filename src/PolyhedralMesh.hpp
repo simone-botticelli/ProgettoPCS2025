@@ -57,7 +57,7 @@ void Initialize_ClassII_GeodesicCounts(GeodesicPolyhedron& geodesic,const Platon
 
 void InitializeGeodesicStorage(GeodesicPolyhedron& geodesic);
 
-void addVertex(GeodesicPolyhedron& geodesic, unsigned int vertexId, const Vector3d& vertexCoordinates);
+void addVertex(GeodesicPolyhedron& geodesic, unsigned int vertexId, const VectorXd& vertexCoordinates);
 
 unsigned int GetorAddEdge(GeodesicPolyhedron& geodesic, unsigned int& nextEdgeId, unsigned int originId, unsigned int endId);
 
