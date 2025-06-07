@@ -154,36 +154,81 @@ PlatonicSolid::PlatonicSolid(PlatonicType type) : Type(type)
 		}
 };
 
-GeodesicCounts SetGeodesicCounts_ClassI(const PlatonicSolid& solid, const unsigned int& n)
+void Initialize_ClassI_GeodesicCounts(GeodesicPolyhedron& geodesic,const PlatonicSolid& solid, const unsigned int& n)
 {
-	GeodesicCounts counts;
 	unsigned int T = n*n;
 	
 	switch(solid.Type) 
 	{
 		case PlatonicType::TETRAHEDRON:
-			counts.V = 2*T + 2;
-			counts.E = 6*T;
-			counts.F = 4*T;
-				return counts;
+			geodesic.NumCell0Ds = 2*T + 2;
+			geodesic.NumCell1Ds = 6*T;
+			geodesic.NumCell2Ds = 4*T;
+				break;
 			
 		case PlatonicType::OCTAHEDRON:
-			counts.V = 4*T + 2;
-			counts.E = 12*T;
-			counts.F = 8*T;
-				return counts;
+			geodesic.NumCell0Ds = 4*T + 2;
+			geodesic.NumCell1Ds = 12*T;
+			geodesic.NumCell2Ds = 8*T;
+				break;
 		
 		case PlatonicType::ICOSAHEDRON:
-			counts.V = 10*T + 2;
-			counts.E = 30*T;
-			counts.F = 20*T;
-				return counts;
+			geodesic.NumCell0Ds = 10*T + 2;
+			geodesic.NumCell1Ds = 30*T;
+			geodesic.NumCell2Ds = 20*T;
+				break;
 			
 		default:
 			cerr << "PlatonicType not supported" << endl;
-			throw std::runtime_error("Unsupported PlatonicType in SetGeodesicCounts_ClassI");
+			throw std::runtime_error("Unsupported PlatonicType in Initialize_ClassI_GeodesicCounts");
 	}
 }
+
+void Initialize_ClassII_GeodesicCounts(GeodesicPolyhedron& geodesic,const PlatonicSolid& solid, const unsigned int& n)
+{
+	unsigned int T = n*n;
+	
+	switch(solid.Type) 
+	{
+		case PlatonicType::TETRAHEDRON:
+			geodesic.NumCell0Ds = 6*(T + n) + 2;
+			geodesic.NumCell1Ds = 18*(T + n);
+			geodesic.NumCell2Ds = 12*(T + n);
+				break;
+			
+		case PlatonicType::OCTAHEDRON:
+			geodesic.NumCell0Ds = 12*(T + n) + 2;
+			geodesic.NumCell1Ds = 36*(T + n);
+			geodesic.NumCell2Ds = 24*(T + n);
+				break;
+		
+		case PlatonicType::ICOSAHEDRON:
+			geodesic.NumCell0Ds = 30*(T + n) + 2;
+			geodesic.NumCell1Ds = 90*(T + n);
+			geodesic.NumCell2Ds = 60*(T + n);
+				break;
+			
+		default:
+			cerr << "PlatonicType not supported" << endl;
+			throw std::runtime_error("Unsupported PlatonicType in Initialize_ClassI_GeodesicCounts");
+	}
+}
+
+void InitializeGeodesicStorage(GeodesicPolyhedron& geodesic) {
+    geodesic.Cell0DsId.reserve(geodesic.NumCell0Ds);
+    geodesic.Cell1DsId.reserve(geodesic.NumCell1Ds);
+    geodesic.Cell2DsId.reserve(geodesic.NumCell2Ds);
+    geodesic.Cell0DsShortPath.reserve(geodesic.NumCell0Ds);
+    geodesic.Cell1DsShortPath.reserve(geodesic.NumCell1Ds);
+
+    geodesic.Cell0DsCoordinates.resize(3, geodesic.NumCell0Ds);
+    geodesic.Cell1DsExtrema.resize(2, geodesic.NumCell1Ds);
+
+    geodesic.Cell2DsVertices.reserve(geodesic.NumCell2Ds);
+    geodesic.Cell2DsEdges.reserve(geodesic.NumCell2Ds);
+}
+
+
 
 void addVertex(GeodesicPolyhedron& geodesic, unsigned int vertexId, const VectorXd& vertexCoordinates)
 {
@@ -224,16 +269,16 @@ unsigned int GetorAddEdge(GeodesicPolyhedron& geodesic, unsigned int& nextEdgeId
 void addFace(
     GeodesicPolyhedron& geodesic,
     unsigned int& nextEdgeId,
-    unsigned int faceId,
+    unsigned int& nextFaceId,
     unsigned int v0, unsigned int v1, unsigned int v2)
 {
-    addFace(geodesic,nextEdgeId, faceId, vector<unsigned int>{v0,v1,v2});
+    addFace(geodesic,nextEdgeId, nextFaceId, vector<unsigned int>{v0,v1,v2});
 }
 
 void addFace( 
     GeodesicPolyhedron& geodesic,
     unsigned int& nextEdgeId,
-    unsigned int faceId,
+    unsigned int& nextFaceId,
     const vector<unsigned int>& facesVertices
 )
 {
@@ -245,88 +290,32 @@ void addFace(
 	    facesEdges.push_back(edgeId);
 	    
     }
-    geodesic.Cell2DsId.push_back(faceId);
+    geodesic.Cell2DsId.push_back(nextFaceId);
     geodesic.Cell2DsVertices.push_back(facesVertices);
     geodesic.Cell2DsEdges.push_back(facesEdges);
+    nextFaceId++;
 }
 
-
-GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n)
+void SubdividePlatonicEdges(GeodesicPolyhedron& geodesic,
+                              const PlatonicSolid& solid,
+                              unsigned int n,
+                              unsigned int& nextVertexId, 
+                              unsigned int& nextEdgeId)
 {
-	GeodesicPolyhedron geodesic;
-
-	// 1. Inizializzo NumCell0Ds, NumCell1Ds, NumCell2Ds
-	
-		GeodesicCounts counts = SetGeodesicCounts_ClassI(solid, n);
-		geodesic.NumCell0Ds = counts.V;
-		geodesic.NumCell1Ds = counts.E;
-		geodesic.NumCell2Ds = counts.F;
-		// cout << "NumCell0Ds: " << geodesic.NumCell0Ds << endl;
-		// cout << "NumCell1Ds: " << geodesic.NumCell1Ds << endl;
-		// cout << "NumCell2Ds: " << geodesic.NumCell2Ds << endl;
-	
-	// 2. Inizializzo le dimensioni dei vettori Cell0DsId, Cell1DsId, Cell2DsId, Cell0DsShortPath, Cell1DsShortPath
-		
-		geodesic.Cell0DsId.reserve(geodesic.NumCell0Ds);
-		geodesic.Cell1DsId.reserve(geodesic.NumCell1Ds);
-		geodesic.Cell2DsId.reserve(geodesic.NumCell2Ds);
-		geodesic.Cell0DsShortPath.reserve(geodesic.NumCell0Ds);
-		geodesic.Cell1DsShortPath.reserve(geodesic.NumCell1Ds);
-		
-	// 3. Inizializzo le dimensioni delle matrici Cell0DsCoordinates, Cell1DsExtrema, Cell2DsVertices, Cell2DsEdges
-
-		// Matrice coordinate punti 0D: 3 x NumCell0Ds (x,y,z)
-		geodesic.Cell0DsCoordinates.resize(3, geodesic.NumCell0Ds);
-		
-		// Matrice estremi 1D: 2 x NumCell1Ds (due vertici per ogni cella 1D)
-		geodesic.Cell1DsExtrema.resize(2, geodesic.NumCell1Ds);
-		
-		// Ridimensiono vettore esterno con NumCell2Ds elementi
-		geodesic.Cell2DsVertices.reserve(geodesic.NumCell2Ds);
-		geodesic.Cell2DsEdges.reserve(geodesic.NumCell2Ds);
-
-	// 4. Salvo i dati dei vertici del solido platonico (id e coordinate) in  Cell0DsCoordinates e in Cell0DsId
-		
-		geodesic.Cell0DsId = solid.VerticesId;  // copia vettore di ID
-		geodesic.Cell0DsCoordinates.block(0, 0, solid.VerticesCoordinates.rows(), solid.VerticesCoordinates.cols()) = solid.VerticesCoordinates;
-	
-	// se n = 1 mi fermo qui.
-	
-	if (n == 1)
-	{
-		// copiare struttura solido platonico
-		geodesic.Cell1DsId = solid.EdgesId;
-		geodesic.Cell2DsId = solid.FacesId;
-		geodesic.Cell1DsExtrema = solid.EdgesExtrema;
-		geodesic.Cell2DsVertices = solid.FacesVertices;
-		geodesic.Cell2DsEdges = solid.FacesEdges;
-		geodesic.Cell3DsId = 0;
-		
-		return geodesic;
-	}
-	
-	// 5.  SUDDIVISIONE LATI PRINCIPALI:  
-				  
-		// per ogni lato in solid.edges lo suddivido (in modo di partire dal vertice con id più basso)
-		
-		unsigned int nextVertexId = solid.NumVertices; // ho già inizializzato i vertici principali
-		unsigned int oldVertexId = nextVertexId;
-		unsigned int nextEdgeId = 0;
-		unsigned int oldEdgeId = nextEdgeId;
+	unsigned int oldEdgeId = nextEdgeId;
 		
 		for(int e = 0; e < solid.NumEdges; e++){
 
 			int v1 = solid.EdgesExtrema(0, e);
 			int v2   = solid.EdgesExtrema(1, e);
 			
-			int v_start = min(v1,v2);
-			int v_end = max(v1,v2);
+			auto [v_start, v_end] = minmax(v1, v2);
 
 			// ottengo le coordinate dei vertici estremi
 			VectorXd start = solid.VerticesCoordinates.col(v_start);
 			VectorXd end   = solid.VerticesCoordinates.col(v_end);
 			
-			// 5.1 Gestisco separatamente il primo lato piccolo
+			// Gestisco separatamente il primo lato piccolo
 				
 				// creo le coordinate del primo vertice
 				double t = double(1) / n;
@@ -340,14 +329,14 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 				
 				oldVertexId = nextVertexId++; // assegna e poi aumenta
 
-			// 5.2 Creo gli altri vertici e lati sul lato principale
+			// Creo gli altri vertici e lati sul lato principale
 			
 				for (int k = 2; k < n; ++k)  // k va da 2 a n-1
 				{
 					
 					// creo le coordinate
 					double t = double(k) / double(n);
-					VectorXd new_point = (1-t)*start + t*end;
+					new_point = (1-t)*start + t*end;
 					
 					// salvo il vertice
 					addVertex(geodesic, nextVertexId, new_point);
@@ -359,41 +348,35 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 					
 				}
 			
-			// 5.3 Collego l'ultimo lato piccolo
+			// Collego l'ultimo lato piccolo
 				GetorAddEdge(geodesic, nextEdgeId, oldVertexId, v_end);
 			}
-		
-			// Usando Eigen Map non creo copie ma un alias che mi permette di lavorare su una parte del vector originale
-		
-			// 5.4 Con Eigen Map mi creo una matrice che nell'i-esima colonna ha gli id dei vertici interni al lato i-esimo del solido
-				
-				
-				// Controllo di sicurezza (poi lo leviamo)
-				assert(geodesic.Cell0DsId.size() >= solid.NumVertices + solid.NumEdges * (n - 1));
-				
-				// Mappo direttamente in una matrice Eigen senza copiare
-				const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>> 
-					internalVerticesMatrix(geodesic.Cell0DsId.data() + solid.NumVertices, // punto di partenza nel vector
-										   n - 1, // elementi per ogni colonna 
-										   solid.NumEdges); // num colonne
-		
-			// 5.5 Con Eigen Map mi creo una matrice che nell'i-esima colonna ha gli id dei lati interni al lato i-esimo del solido
-			
-				const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>> 
-					internalEdgesMatrix(geodesic.Cell1DsId.data(), 
-										n, 
-										solid.NumEdges);
-			
-			// 5.6 Controlli ...
+}
 
-	// 6. TRIANGOLAZIONE
-		unsigned int nextFaceId = 0;
-		int i = 1;
-		int j = 1;
-		double alpha = double(n - i - j) / n;
-		double beta  = double(i) / n;
-		double gamma = double(j) / n;
-		
+
+VectorXd ComputePointOnTriangle(unsigned int n,
+								unsigned int i,
+								unsigned int j,
+								const Ref<const VectorXd>& vA_coords, 
+								const Ref<const VectorXd>& vB_coords,
+								const Ref<const VectorXd>& vC_coords)
+{
+	double alpha = double(n - i - j) / n;
+	double beta  = double(i) / n;
+	double gamma = double(j) / n;
+	
+	return alpha * vA_coords + beta * vB_coords + gamma * vC_coords;
+}
+
+void TriangulateFacesClassI(GeodesicPolyhedron& geodesic,
+                                const PlatonicSolid& solid,
+                                unsigned int n,
+                                unsigned int& nextVertexId,
+                                unsigned int& nextEdgeId,
+                                unsigned int& nextFaceId, 
+                                const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>>& internalVerticesMatrix,
+                                const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>>& internalEdgesMatrix)
+{
 		// per ogni faccia del solido platonico:
 		for(int f = 0; f < solid.NumFaces; f++)
 		{
@@ -427,13 +410,13 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 					
 			// caso n = 2
 			if(n==2){
-				addFace(geodesic, nextEdgeId, nextFaceId++, 
+				addFace(geodesic, nextEdgeId, nextFaceId, 
 							A, AB[0], AC[0]);
-				addFace(geodesic, nextEdgeId, nextFaceId++, 
+				addFace(geodesic, nextEdgeId, nextFaceId, 
 							B, AB[0], BC[0]);
-				addFace(geodesic, nextEdgeId, nextFaceId++, 
+				addFace(geodesic, nextEdgeId, nextFaceId, 
 							C, AC[0], BC[0]);
-				addFace(geodesic, nextEdgeId, nextFaceId++, 
+				addFace(geodesic, nextEdgeId, nextFaceId, 
 							BC[0], AB[0], AC[0]);
 							
 				continue;
@@ -441,167 +424,125 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 							
 			// caso n > 2 
 				
-				// passo 1: 
-			
-					// salvo la prima faccia (ATTENZIONE all ordine di id_vertici e  id_lati)
-					addFace(geodesic, nextEdgeId, nextFaceId++, 
+				// passo 1: salvo la prima faccia 
+					addFace(geodesic, nextEdgeId, nextFaceId, 
 							A, AB[0], AC[0]);
 				
-				// passo 2: creo il primo punto interno
-					
-					i = 1;
-					j = 1;
-					alpha = double(n - i - j) / n;
-					beta  = double(i) / n;
-					gamma = double(j) / n;
-					
-					VectorXd new_point = alpha * vA + beta * vB + gamma * vC;
+				// passo 2: creo il primo vertice interno
+					int i = 1;
+					int j = 1;
+					VectorXd new_point = ComputePointOnTriangle(n, i, j, vA, vB, vC);
 					addVertex(geodesic, nextVertexId, new_point);
 					
-					
-					// 2.1 salvo la prima faccia
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+					// salvo le tre facce tra il primo vertice interno ed A
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								AB[0], AB[1], nextVertexId);
-
-					// 2.2 salvo la seconda faccia
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								nextVertexId, AC[0], AB[0]);
-					
-					// 2.3 salvo la terza faccia 
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								nextVertexId, AC[1], AC[0]);
-							
 					nextVertexId++;
 										 
-				// passo 3:  
-				
-				// per ogni riga (tranne l'ultima)
+				// passo 3: completo la triangolazione per righe (tranne l'ultima)
 				for (int s = 3; s < n; s++)
 				{
-				// 3.1 creo il primo punto interno (j = 1)
-					// Coordinate baricentriche
+					// Creo il primo vertice interno (j = 1)
 					j = 1;
 					i = s - j;
-					alpha = double(n - i - j) / n;
-					beta  = double(i) / n;
-					gamma = double(j) / n;
-					
-
-					new_point = alpha * vA + beta * vB + gamma * vC;
+					new_point = ComputePointOnTriangle(n, i, j, vA, vB, vC);
 					addVertex(geodesic, nextVertexId, new_point);
 						
-						// salvo faccia a sx 
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						// salvo le due facce adiacenti ad AB
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								AB[i - 1], AB[i], nextVertexId);
-						
-						// salvo faccia sotto
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								AB[i - 1], nextVertexId, nextVertexId - i + 1);
 
 					nextVertexId++;
 						
-					// 3.2 creo il secondo vertice interno
-					
+					// Creo il secondo vertice interno
 					j = 2;
 					i = s - j;
-					alpha = double(n - i - j) / n;
-					beta  = double(i) / n;
-					gamma = double(j) / n;
-					new_point = alpha * vA + beta * vB + gamma * vC;
+					new_point = ComputePointOnTriangle(n, i, j, vA, vB, vC);
 					addVertex(geodesic, nextVertexId, new_point); 
 						
 						
-						// creo la faccia a sx 
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						// Creo la successiva lungo la riga 
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								nextVertexId - 1, nextVertexId, nextVertexId - s + 1);
 						
 					nextVertexId++;
 					
-					// 3.3 per ogni colonna (da 2 alla penultima)
+					// Per ogni colonna (da 2 alla penultima)
 					for (j = 3; j < s; j++)
 					{
 						
 						i = s - j;
 
-						// creo la faccia sotto 
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						// creo la faccia alla colonna j 
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								nextVertexId - 1, nextVertexId - s + 1, nextVertexId - s);
 						
 
 						// aggiungo il vertice della colonna j + 1 
-						alpha = double(n - i - j) / n;
-						beta  = double(i) / n;
-						gamma = double(j) / n;
-						VectorXd new_point = alpha * vA + beta * vB + gamma * vC;
+						new_point = ComputePointOnTriangle(n, i, j, vA, vB, vC);
 						addVertex(geodesic, nextVertexId, new_point);
-
-						// creo la faccia alla sua sx
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						
+						// creo la faccia tra la colonna j e j + 1
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								nextVertexId - s + 1, nextVertexId - 1, nextVertexId);
 						
 						nextVertexId++;
 					}
 						
-					// 3.4 ultima colonna
+					// ultima colonna
 						
-						// collego l'ultimo vertice ad AC[j - 1] e creo la faccia sotto
+						// collego l'ultimo vertice ad AC[j - 1] e creo la faccia
 						
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								AC[s-2], nextVertexId - s , nextVertexId - 1);
 						
-						// collego l'ultimo vertice ad AC[j] e creo la faccia a dx
+						// collego l'ultimo vertice ad AC[j] e creo la faccia
 						
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								AC[s-1], AC[s-2], nextVertexId - 1);
 						
 				}
-				// passo 4: ultima riga
+				// passo 4: completo l'ultima riga
 					 
-					// 4.1 collego le prime tre facce 
-					// collego AB[n-2]-BC[0] e creo la prima faccia
-						
-						
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+					// collego le prime tre facce 
+					addFace(geodesic, nextEdgeId, nextFaceId,
 								AB[n-2], B, BC[0]);
-						
-			
-						// collego BC[0] al vertice sotto e creo la seconda faccia
-						
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+					addFace(geodesic, nextEdgeId, nextFaceId,
 								AB[n-2], BC[0], nextVertexId - n + 2);
-						
-						// collego BC[1] al vertice sotto a sx e creo la terza faccia
-						
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+					addFace(geodesic, nextEdgeId, nextFaceId,
 								nextVertexId - n + 2, BC[0], BC[1]);
 								
-					// 4.2 per ogni vertice sul lato BC (dal secondo al penultimo[1:n-3]) 
+					// per ogni vertice sul lato BC (dal secondo al penultimo[1:n-3]) 
 					for(int k = 1; k < n - 2; k++)
 					{
-						// lo collego al punto sotto a dx e creo una faccia
+						// salvo le facce interne all'ultima riga
 						int vertex_under = nextVertexId - n + 2 + k;
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								vertex_under - 1, BC[k], vertex_under);
-
-						// collego il vertice successivo a quello sotto e creo un altra faccia
-						
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								BC[k], BC[k + 1], vertex_under);
 						
 					}
 						
-					// 4.3 collego il lato BC[n-2]-AC[n-2] e salvo le ultime 2 facce
+					// salvo le ultime 2 facce
 						
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								BC[n-2], AC[n-2], nextVertexId - 1);
-						addFace(geodesic, nextEdgeId, nextFaceId++,
+						addFace(geodesic, nextEdgeId, nextFaceId,
 								BC[n-2], C, AC[n-2]);
 	
 		}  // fine ciclo sulle facce 
-		  
-	// Normalizzazione
-	MatrixXd& M = geodesic.Cell0DsCoordinates;  // MatrixXd M(n, m) già inizializzata
-		// Normalizza ogni colonna in-place
+		NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
+}
+
+void NormalizeMatrixColumns(MatrixXd& M)
+{
 		for (int j = 0; j < M.cols(); ++j) {
 			double norm = M.col(j).norm();
 			if (norm > 1e-12) {
@@ -609,10 +550,117 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 			}
 		}
 
+}
+
+GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n)
+{
+	GeodesicPolyhedron geodesic;
+
+	// 1. Inizializzo NumCell0Ds, NumCell1Ds, NumCell2Ds
+	
+		Initialize_ClassI_GeodesicCounts(geodesic, solid, n);
+	
+	// 2. Inizializzo le dimensioni delle strutture dati
+		
+		InitializeGeodesicStorage(geodesic);
+
+	// 3. Salvo i dati dei vertici del solido platonico (id e coordinate) in  Cell0DsCoordinates e in Cell0DsId
+		
+		copy(solid.VerticesId.begin(), solid.VerticesId.end(), geodesic.Cell0DsId.begin());  
+		geodesic.Cell0DsCoordinates.block(0, 0, solid.VerticesCoordinates.rows(), solid.VerticesCoordinates.cols()) = solid.VerticesCoordinates;
+	
+		// se n = 1 copio struttura solido platonico
+		
+		if (n == 1)
+		{
+			geodesic.Cell1DsId = solid.EdgesId;
+			geodesic.Cell2DsId = solid.FacesId;
+			geodesic.Cell1DsExtrema = solid.EdgesExtrema;
+			geodesic.Cell2DsVertices = solid.FacesVertices;
+			geodesic.Cell2DsEdges = solid.FacesEdges;
+			geodesic.Cell3DsId = 0;
+			
+			return geodesic;
+		}
+	
+	// 4.  SUDDIVISIONE LATI PRINCIPALI:
+		SubdividePlatonicEdges(geodesic,
+                              solid,
+                              n,
+                              nextVertexId, 
+                              nextEdgeId);
+		
+		
+		 
+			assert(geodesic.Cell0DsId.size() >= solid.NumVertices + solid.NumEdges * (n - 1));
+			
+		// Creo una matrice che nell'i-esima colonna ha gli id dei vertici interni al lato i-esimo del solido
+			const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>> 
+				internalVerticesMatrix(geodesic.Cell0DsId.data() + solid.NumVertices, // punto di partenza nel vector
+									   n - 1, // elementi per ogni colonna 
+									   solid.NumEdges); // num colonne
+	
+		// Creo una matrice che nell'i-esima colonna ha gli id dei lati interni al lato i-esimo del solido
+			const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>> 
+				internalEdgesMatrix(geodesic.Cell1DsId.data(), 
+									n, 
+									solid.NumEdges);
+			
+
+	// 6. TRIANGOLAZIONE
+		unsigned int nextFaceId = 0;
+		TriangulateFacesClassI(geodesic, solid, n,
+							   nextVertexId, nextEdgeId, nextFaceId,
+							   internalVerticesMatrix,
+							   internalEdgesMatrix);
+		
+		  
+	// 7. Normalizzazione
+		NormalizeMatrix(geodesic.Cell0DsCoordinates);
+	
 	return geodesic;
 	
 } // fine build_classI_Geodesic
 	
+
+/*GeodesicPolyhedron Build_ClassII_Geodesic(const PlatonicSolid& solid, const unsigned int n)
+{
+	GeodesicPolyhedron GeoClassI = Build_ClassI_Geodesic(solid, n);
+	GeodesicPolyhedron GeoClassII;
+	// inizializzazione 
+	Initialize_ClassII_GeodesicCounts(GeoClassII, solid, n);
+	InitializeGeodesicStorage(GeoClassII);
+	// copio i vertici
+	copy(GeoClassI.Cell0DsId.begin(), GeoClassI.Cell0DsId.end(), GeoClassII.Cell0DsId.begin());
+	GeoClassII.Cell0DsCoordinates.block(0, 0, GeoClassI.Cell0DsCoordinates.rows(), GeoClassI.Cell0DsCoordinates.cols()) = GeoClassI.Cell0DsCoordinates;
+	// per ogni lato principale mi calcolo il punto medio
+	unsigned int nextVertexId = GeoClassI.NumCell0Ds;
+	for(GeoClassI_edge : GeoClassI.Cell1DsId)
+	{
+		int& origin = GeoClassI.Cell1DsExtrema(0,GeoClassI_edge);
+		int& end = GeoClassI.Cell1DsExtrema(1,GeoClassI_edge);
+		VectorXd start = GeoClassI.VerticesCoordinates.col(origin);
+		VectorXd end   = GeoClassI.VerticesCoordinates.col(end);
+		VectorXd new_point = 0.5 * start + 0.5 * end;
+		addVertex(GeoClassII, nextVertexId++, new_point);
+	}
+	
+	
+	// per ogni faccia mi calcolo il punto medio
+	for(GeoClassI_face : GeoClassI.Cell2DsId)
+	{
+		
+		VectorXd ComputePointOnTriangle(3, 1, 1, vA, vB, vC);
+	}
+	// costruisco la matrice di aciacenza edgetoFaces
+	
+	// connetto i 4 triangoli piccoli per ogni lato principale
+	
+	// connetto i 2 triangoli equilateri a cavallo di ogni lato interno
+	
+	return geo;
+}*/
+
 
  void ComputeShortestPath(GeodesicPolyhedron& mesh, unsigned int source, unsigned int target) {
     const int n = mesh.NumCell0Ds;

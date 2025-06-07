@@ -49,13 +49,13 @@ struct PlatonicSolid
 	
 };
 
-struct GeodesicCounts {
-    unsigned int V;
-    unsigned int E;
-    unsigned int F;
-};
+void NormalizeMatrixColumns(MatrixXd& M);
 
-GeodesicCounts SetGeodesicCounts_ClassI(const PlatonicSolid& solid, const unsigned int& n);
+void Initialize_ClassI_GeodesicCounts(GeodesicPolyhedron& geodesic,const PlatonicSolid& solid, const unsigned int& n);
+
+void Initialize_ClassII_GeodesicCounts(GeodesicPolyhedron& geodesic,const PlatonicSolid& solid, const unsigned int& n);
+
+void InitializeGeodesicStorage(GeodesicPolyhedron& geodesic);
 
 void addVertex(GeodesicPolyhedron& geodesic, unsigned int vertexId, const Vector3d& vertexCoordinates);
 
@@ -76,6 +76,28 @@ void addFace(
     unsigned int& nextEdgeId,
     unsigned int faceId,
     unsigned int v0, unsigned int v1, unsigned int v2);
+    
+void SubdividePlatonicEdges(GeodesicPolyhedron& geodesic,
+                              const PlatonicSolid& solid,
+                              unsigned int n,
+                              unsigned int& nextVertexId, 
+                              unsigned int& nextEdgeId);
+
+VectorXd ComputePointOnTriangle(unsigned int n,
+								unsigned int i,
+								unsigned int j,
+								const Ref<const VectorXd>& vA_coords, 
+								const Ref<const VectorXd>& vB_coords,
+								const Ref<const VectorXd>& vC_coords);
+
+void TriangulateFacesClassI(GeodesicPolyhedron& geodesic,
+                                const PlatonicSolid& solid,
+                                unsigned int n,
+                                unsigned int& nextVertexId,
+                                unsigned int& nextEdgeId,
+                                unsigned int& nextFaceId, 
+                                const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>>& internalVerticesMatrix,
+                                const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>>& internalEdgesMatrix);
 
 GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n);
 
