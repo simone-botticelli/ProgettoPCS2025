@@ -99,6 +99,8 @@ void TriangulateFacesClassI(GeodesicPolyhedron& geodesic,
 
 GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n);
 
+GeodesicPolyhedron Build_ClassII_Geodesic(const PlatonicSolid& solid, const unsigned int n);
+
 void ComputeShortestPath(GeodesicPolyhedron& mesh, unsigned int source, unsigned int target);
 
 GeodesicPolyhedron dualize(const GeodesicPolyhedron& poly);

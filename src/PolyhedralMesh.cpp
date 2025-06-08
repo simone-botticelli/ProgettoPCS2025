@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <span>
 
 #include "PolyhedralMesh.hpp"
 #include "Eigen/Eigen"
@@ -260,7 +261,7 @@ unsigned int GetorAddEdge(GeodesicPolyhedron& geodesic, unsigned int& nextEdgeId
        
 }
 
-// Overload per triangoli
+
 void addFace(
     GeodesicPolyhedron& geodesic,
     unsigned int& nextEdgeId,
@@ -279,6 +280,7 @@ void addFace(
     geodesic.Cell2DsVertices[newId] = {v0, v1, v2};
     facesEdges = {edge1_Id, edge2_Id, edge3_Id};
     geodesic.Cell2DsEdges[newId] = facesEdges;
+    geodesic.Cell2DsId[newId] = newId;
     nextFaceId++;
 }
 
@@ -404,7 +406,7 @@ void TriangulateFacesClassI(GeodesicPolyhedron& geodesic,
 			const Ref<const VectorXd> vB = solid.VerticesCoordinates.col(B);
 			const Ref<const VectorXd> vC = solid.VerticesCoordinates.col(C);
 			
-			// creo gli alias dei vettori di id_vertici interni ai lati principali (AB, BC, AC)			
+			// creo gli alias dei vettori di id_vertici interni ai lati principali (AB, BC, AC)
 			const unsigned int& edge_0 = solid.FacesEdges[f][0];
 			const unsigned int& edge_1 = solid.FacesEdges[f][1];
 			const unsigned int& edge_2 = solid.FacesEdges[f][2];
@@ -548,7 +550,6 @@ void TriangulateFacesClassI(GeodesicPolyhedron& geodesic,
 								BC[n-2], C, AC[n-2]);
 	
 		}  // fine ciclo sulle facce 
-		NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
 }
 
 void NormalizeMatrixColumns(MatrixXd& M)
@@ -577,7 +578,6 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 	// 3. Salvo i dati dei vertici del solido platonico (id e coordinate) in  Cell0DsCoordinates e in Cell0DsId
 		
 		copy(solid.VerticesId.begin(), solid.VerticesId.end(), geodesic.Cell0DsId.begin());
-		cout << "rows " << solid.VerticesCoordinates.rows() << ", cols " << solid.VerticesCoordinates.cols() << endl;
 		geodesic.Cell0DsCoordinates.block(0, 0, solid.VerticesCoordinates.rows(), solid.VerticesCoordinates.cols()) = solid.VerticesCoordinates;
 	
 		// se n = 1 copio struttura solido platonico
@@ -605,7 +605,6 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
                               nextEdgeId);
 		
 		
-		 cout << geodesic.Cell0DsId.size() << endl;
 			//assert(geodesic.Cell0DsId.size() >= solid.NumVertices + solid.NumEdges * (n - 1));
 			
 		// Creo una matrice che nell'i-esima colonna ha gli id dei vertici interni al lato i-esimo del solido
@@ -632,14 +631,14 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 		
 		  
 	// 7. Normalizzazione
-		NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
+		// NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
 	
 	return geodesic;
 	
 } // fine build_classI_Geodesic
 	
 
-/*GeodesicPolyhedron Build_ClassII_Geodesic(const PlatonicSolid& solid, const unsigned int n)
+GeodesicPolyhedron Build_ClassII_Geodesic(const PlatonicSolid& solid, const unsigned int n)
 {
 	GeodesicPolyhedron GeoClassI = Build_ClassI_Geodesic(solid, n);
 	GeodesicPolyhedron GeoClassII;
@@ -649,33 +648,115 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 	// copio i vertici
 	copy(GeoClassI.Cell0DsId.begin(), GeoClassI.Cell0DsId.end(), GeoClassII.Cell0DsId.begin());
 	GeoClassII.Cell0DsCoordinates.block(0, 0, GeoClassI.Cell0DsCoordinates.rows(), GeoClassI.Cell0DsCoordinates.cols()) = GeoClassI.Cell0DsCoordinates;
-	// per ogni lato principale mi calcolo il punto medio
+	for(unsigned int v : GeoClassII.Cell0DsId) cout << v<<", ";
+	unsigned int NumPrincipalEdges = n * solid.NumEdges;
 	unsigned int nextVertexId = GeoClassI.NumCell0Ds;
-	for(GeoClassI_edge : GeoClassI.Cell1DsId)
-	{
-		int& origin = GeoClassI.Cell1DsExtrema(0,GeoClassI_edge);
-		int& end = GeoClassI.Cell1DsExtrema(1,GeoClassI_edge);
-		VectorXd start = GeoClassI.VerticesCoordinates.col(origin);
-		VectorXd end   = GeoClassI.VerticesCoordinates.col(end);
-		VectorXd new_point = 0.5 * start + 0.5 * end;
-		addVertex(GeoClassII, nextVertexId++, new_point);
-	}
 	
-	
-	// per ogni faccia mi calcolo il punto medio
-	for(GeoClassI_face : GeoClassI.Cell2DsId)
+	// per ogni lato principale mi calcolo il punto medio
+	int startId;
+	int endId;
+	VectorXd new_point;
+	VectorXd start;
+	VectorXd end;
+	for(unsigned int e = 0; e < NumPrincipalEdges; ++e)
 	{
 		
-		VectorXd ComputePointOnTriangle(3, 1, 1, vA, vB, vC);
+		startId = GeoClassI.Cell1DsExtrema(0,e);
+		endId = GeoClassI.Cell1DsExtrema(1,e);
+		start = GeoClassI.Cell0DsCoordinates.col(startId);
+		end   = GeoClassI.Cell0DsCoordinates.col(endId);
+		new_point = 0.5 * start + 0.5 * end;
+		
+		addVertex(GeoClassII, nextVertexId++, new_point);
+		
+		
 	}
-	// costruisco la matrice di aciacenza edgetoFaces
-	MatrixXd EdgetoFaces();
+	span<unsigned int> EdgesMidpoints(GeoClassII.Cell0DsId.data() + GeoClassI.NumCell0Ds, NumPrincipalEdges);
+
+	
+	// per ogni faccia di GeoClassI mi calcolo il punto medio e costruisco la matrice di aciacenza edgetoFaces
+
+	vector<vector<unsigned int>> edgeToFaces;
+	edgeToFaces.resize(GeoClassI.NumCell1Ds);
+	
+	int A;
+	int B;
+	int C;
+	
+	VectorXd vA;
+	VectorXd vB;
+	VectorXd vC;
+	VectorXd midpoint;
+	
+	for(unsigned int face : GeoClassI.Cell2DsId)
+	{
+		// punto medio
+		A = GeoClassI.Cell2DsVertices[face][0];
+		B = GeoClassI.Cell2DsVertices[face][1];
+		C = GeoClassI.Cell2DsVertices[face][2];
+		
+		vA = GeoClassI.Cell0DsCoordinates.col(A);
+		vB = GeoClassI.Cell0DsCoordinates.col(B);
+		vC = GeoClassI.Cell0DsCoordinates.col(C);
+		
+		midpoint = ComputePointOnTriangle(3, 1, 1, vA, vB, vC);
+		addVertex(GeoClassII, nextVertexId++, midpoint);
+		// edgeToFaces
+		for (unsigned int edge : GeoClassI.Cell2DsEdges[face])
+		{
+			edgeToFaces[edge].push_back(face);
+		}
+		//cout << endl;
+		
+	}
+	
+	span<unsigned int> FacesMidpoints(GeoClassII.Cell0DsId.data() + GeoClassI.NumCell0Ds + NumPrincipalEdges,
+										GeoClassI.NumCell2Ds);
+
+	
 	// connetto i 4 triangoli piccoli per ogni lato principale
 	
+	unsigned int nextEdgeId = 0;
+	unsigned int nextFaceId = 0;
+	unsigned int face1;
+	unsigned int face2;
+	unsigned int faceMidpoint1;
+	unsigned int faceMidpoint2;
+	unsigned int extrema0;
+	unsigned int extrema1;
+	unsigned int edgeMidpoint;
+	for (int e = 0; e < NumPrincipalEdges; ++e)
+	{
+		
+		extrema0 = GeoClassI.Cell1DsExtrema(0, e);
+		extrema1 = GeoClassI.Cell1DsExtrema(1, e);
+		face1 = edgeToFaces[e][0];
+		face2 = edgeToFaces[e][1];
+		faceMidpoint1 = FacesMidpoints[face1];
+		faceMidpoint2 = FacesMidpoints[face2];
+		edgeMidpoint = EdgesMidpoints[e];
+		addFace(GeoClassII, nextEdgeId, nextFaceId, extrema0, edgeMidpoint, faceMidpoint1);
+		addFace(GeoClassII, nextEdgeId, nextFaceId, extrema0, edgeMidpoint, faceMidpoint2);
+		addFace(GeoClassII, nextEdgeId, nextFaceId, extrema1, edgeMidpoint, faceMidpoint1);
+		addFace(GeoClassII, nextEdgeId, nextFaceId, extrema1, edgeMidpoint, faceMidpoint2);
+	}
 	// connetto i 2 triangoli equilateri a cavallo di ogni lato interno
+	for (int e = NumPrincipalEdges; e < GeoClassI.NumCell1Ds; ++e)
+	{
+		extrema0 = GeoClassI.Cell1DsExtrema(0, e);
+		extrema1 = GeoClassI.Cell1DsExtrema(1, e);
+		face1 = edgeToFaces[e][0];
+		face2 = edgeToFaces[e][1];
+		faceMidpoint1 = FacesMidpoints[face1];
+		faceMidpoint2 = FacesMidpoints[face2];
+		addFace(GeoClassII, nextEdgeId, nextFaceId, extrema0, faceMidpoint1, faceMidpoint2);
+		addFace(GeoClassII, nextEdgeId, nextFaceId, extrema1, faceMidpoint1, faceMidpoint2);
+		
+	}
+	NormalizeMatrixColumns(GeoClassII.Cell0DsCoordinates);
 	
 	return GeoClassII;
-}*/
+}
 
 
  void ComputeShortestPath(GeodesicPolyhedron& mesh, unsigned int source, unsigned int target) {
