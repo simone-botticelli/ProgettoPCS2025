@@ -648,7 +648,6 @@ GeodesicPolyhedron Build_ClassII_Geodesic(const PlatonicSolid& solid, const unsi
 	// copio i vertici
 	copy(GeoClassI.Cell0DsId.begin(), GeoClassI.Cell0DsId.end(), GeoClassII.Cell0DsId.begin());
 	GeoClassII.Cell0DsCoordinates.block(0, 0, GeoClassI.Cell0DsCoordinates.rows(), GeoClassI.Cell0DsCoordinates.cols()) = GeoClassI.Cell0DsCoordinates;
-	for(unsigned int v : GeoClassII.Cell0DsId) cout << v<<", ";
 	unsigned int NumPrincipalEdges = n * solid.NumEdges;
 	unsigned int nextVertexId = GeoClassI.NumCell0Ds;
 	

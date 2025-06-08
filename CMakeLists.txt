@@ -67,4 +67,20 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_LINKED_LIBRARIES}
 target_compile_options(${PROJECT_NAME} PUBLIC -fPIC)
 
 
+# ===================== ENABLE TESTING =====================
+enable_testing()
+
+# Add test executable
+add_executable(${PROJECT_NAME}_TEST
+    main_test.cpp
+    ${${PROJECT_NAME}_TEST_sources}  
+)
+
+target_include_directories(${PROJECT_NAME}_TEST PUBLIC ${${PROJECT_NAME}_TEST_includes})
+target_link_libraries(${PROJECT_NAME}_TEST PUBLIC ${${PROJECT_NAME}_LINKED_LIBRARIES})
+
+# Add test for CTest
+add_test(NAME RunUnitTests COMMAND ${PROJECT_NAME}_TEST)
+
+
 
