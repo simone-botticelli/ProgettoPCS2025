@@ -100,7 +100,6 @@ void ExportCell3Ds(const GeodesicPolyhedron& polyhedron, const string& filePath)
 
     file << "# Cell3Ds - Polyhedron" << endl;
     file << "# Id NumVertices NumEdges NumFaces" << endl;
-    file << "0" << endl;  // Un solo poliedro
 
     file << polyhedron.Cell3DsId << " "
          << polyhedron.NumCell0Ds << " "

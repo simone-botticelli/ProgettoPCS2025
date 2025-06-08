@@ -228,6 +228,8 @@ void InitializeGeodesicStorage(GeodesicPolyhedron& geodesic) {
 
     geodesic.Cell2DsVertices.resize(geodesic.NumCell2Ds);
     geodesic.Cell2DsEdges.resize(geodesic.NumCell2Ds);
+    
+    geodesic.Cell3DsId = 0;
 }
 
 

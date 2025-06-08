@@ -33,8 +33,8 @@ int main(int argc, char** argv) {
 	    return 1;
 	}
 	    
-	if (( b != 0 && c != 0) || (b == 0 && c == 0)) {
-		cerr << "Errore: esattamente uno tra b e c deve essere diverso da 0.\n";
+	if ((b != 0 && c != 0 && b != c) || (b == 0 && c == 0)) {
+		cerr << "Errore: esattamente uno tra b e c deve essere diverso da 0, oppure b e c devono essere uguali.\n";
 		return 1;
 	}
 	 
@@ -58,9 +58,17 @@ int main(int argc, char** argv) {
     }
 
 	PlatonicSolid solid(type);
+	GeodesicPolyhedron geo; 
 	
-	unsigned int n = b+c;
-	GeodesicPolyhedron geo = PolyhedralLibrary::Build_ClassI_Geodesic(solid, n);
+	if (b != c) {
+	geo = PolyhedralLibrary::Build_ClassI_Geodesic(solid, b+c);
+	NormalizeMatrixColumns(geo.Cell0DsCoordinates);
+	cout << "E' stato selezionato il poliedro di classe I.\n";
+	}
+	else {
+	geo = PolyhedralLibrary::Build_ClassII_Geodesic(solid, b);
+	cout << "E' stato selezionato il poliedro di classe II.\n";
+	}
 	
 	if (to_dualize) {
 		geo = dualize(geo);
@@ -125,7 +133,7 @@ int main(int argc, char** argv) {
     }
 ExportAllCells(geo, "./");
 
-cout << "Poliedro geodetico di classe I generato con successo!\n";
+cout << "Poliedro geodetico generato con successo!\n";
 
 return 0;
 
