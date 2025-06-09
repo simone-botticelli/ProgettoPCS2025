@@ -20,11 +20,17 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // Leggi i parametri dalla riga di comando
-    int p = stoi(argv[1]);
-    int q = stoi(argv[2]);
-    int b = stoi(argv[3]);
-    int c = stoi(argv[4]);
+int p, q, b, c;
+
+	try {
+    p = stoi(argv[1]);
+    q = stoi(argv[2]);
+    b = stoi(argv[3]);
+    c = stoi(argv[4]);
+	} catch (const exception& e) {
+    	cerr << "Errore: uno degli argomenti <p> <q> <b> <c> non è un intero valido.\n";
+    	return 1;
+	}
     
     bool to_dualize = false;
     
@@ -75,11 +81,15 @@ int main(int argc, char** argv) {
 		cout << "Ho costruito il poliedro duale come richiesto.\n";
 	}
 	
-	if (argc == 7) {
-	int start = stoi(argv[5]); 	
-	int end = stoi(argv[6]);
-	ComputeShortestPath(geo, start, end);
-	}
+if (argc == 7) {
+    try {
+        int start = stoi(argv[5]);
+        int end   = stoi(argv[6]);
+        ComputeShortestPath(geo, start, end);
+    } catch (const exception& e) {
+        cerr << "Argomenti <start> o <end> non validi: devono essere interi.\n";
+    }
+}
 	
 	UCDUtilities utilities;
     {
