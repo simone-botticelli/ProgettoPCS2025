@@ -127,7 +127,7 @@ TEST_F(PolyhedralMeshTest, Initialize_ClassI_GeodesicCounts_Octahedron) {
 
 TEST_F(PolyhedralMeshTest, Initialize_ClassI_GeodesicCounts_Icosahedron) {
     GeodesicPolyhedron geodesic;
-    unsigned int n = 1;
+    unsigned int n = 2;
     
     Initialize_ClassI_GeodesicCounts(geodesic, *icosahedron, n);
     
@@ -154,20 +154,20 @@ TEST_F(PolyhedralMeshTest, Initialize_ClassII_GeodesicCounts_Tetrahedron) {
 TEST_F(PolyhedralMeshTest, InitializeGeodesicStorage_BasicTest) {
     GeodesicPolyhedron geodesic;
     geodesic.NumCell0Ds = 10;
-    geodesic.NumCell1Ds = 15;
+    geodesic.NumCell1Ds = 16;
     geodesic.NumCell2Ds = 8;
     
     InitializeGeodesicStorage(geodesic);
     
     EXPECT_EQ(geodesic.Cell0DsId.size(), 10);
-    EXPECT_EQ(geodesic.Cell1DsId.size(), 15);
+    EXPECT_EQ(geodesic.Cell1DsId.size(), 16);
     EXPECT_EQ(geodesic.Cell2DsId.size(), 8);
     
     EXPECT_EQ(geodesic.Cell0DsCoordinates.rows(), 3);
     EXPECT_EQ(geodesic.Cell0DsCoordinates.cols(), 10);
     
     EXPECT_EQ(geodesic.Cell1DsExtrema.rows(), 2);
-    EXPECT_EQ(geodesic.Cell1DsExtrema.cols(), 15);
+    EXPECT_EQ(geodesic.Cell1DsExtrema.cols(), 16);
     
     EXPECT_EQ(geodesic.Cell2DsVertices.size(), 8);
     EXPECT_EQ(geodesic.Cell2DsEdges.size(), 8);
@@ -176,23 +176,29 @@ TEST_F(PolyhedralMeshTest, InitializeGeodesicStorage_BasicTest) {
 // Test for addVertex
 TEST_F(PolyhedralMeshTest, addVertex_BasicTest) {
     GeodesicPolyhedron geodesic;
-    geodesic.NumCell0Ds = 5;
+    geodesic.NumCell0Ds = 20;
+    geodesic.NumCell1Ds = 32;
+    geodesic.NumCell2Ds = 16;
+    
     InitializeGeodesicStorage(geodesic);
     
     const Vector3d coords(1.0, 2.0, 3.0);
     
-    addVertex(geodesic, 2, coords);
+    addVertex(geodesic, 11, coords);
     
-    EXPECT_EQ(geodesic.Cell0DsId[2], 2);
-    EXPECT_NEAR(geodesic.Cell0DsCoordinates(0, 2), 1.0, 1e-10);
-    EXPECT_NEAR(geodesic.Cell0DsCoordinates(1, 2), 2.0, 1e-10);
-    EXPECT_NEAR(geodesic.Cell0DsCoordinates(2, 2), 3.0, 1e-10);
+    EXPECT_EQ(geodesic.Cell0DsId[11], 11);
+    EXPECT_NEAR(geodesic.Cell0DsCoordinates(0, 11), 1.0, 1e-10);
+    EXPECT_NEAR(geodesic.Cell0DsCoordinates(1, 11), 2.0, 1e-10);
+    EXPECT_NEAR(geodesic.Cell0DsCoordinates(2, 11), 3.0, 1e-10);
 }
 
 // Test for GetorAddEdge
 TEST_F(PolyhedralMeshTest, GetorAddEdge_NewEdge) {
     GeodesicPolyhedron geodesic;
-    geodesic.NumCell1Ds = 10;
+	geodesic.NumCell0Ds = 10;
+    geodesic.NumCell1Ds = 16;
+    geodesic.NumCell2Ds = 8;
+
     InitializeGeodesicStorage(geodesic);
     
     unsigned int nextEdgeId = 0;
@@ -211,7 +217,10 @@ TEST_F(PolyhedralMeshTest, GetorAddEdge_NewEdge) {
 
 TEST_F(PolyhedralMeshTest, GetorAddEdge_ExistingEdge) {
     GeodesicPolyhedron geodesic;
-    geodesic.NumCell1Ds = 10;
+	geodesic.NumCell0Ds = 10;
+    geodesic.NumCell1Ds = 16;
+    geodesic.NumCell2Ds = 8;
+
     InitializeGeodesicStorage(geodesic);
     
     unsigned int nextEdgeId = 0;
@@ -228,6 +237,7 @@ TEST_F(PolyhedralMeshTest, GetorAddEdge_ExistingEdge) {
 // Test for addFace
 TEST_F(PolyhedralMeshTest, addFace_TriangleTest) {
     GeodesicPolyhedron geodesic;
+    geodesic.NumCell0Ds = 7;
     geodesic.NumCell1Ds = 10;
     geodesic.NumCell2Ds = 5;
     InitializeGeodesicStorage(geodesic);
@@ -291,6 +301,7 @@ TEST_F(PolyhedralMeshTest, Build_ClassI_Geodesic_N1_Tetrahedron) {
 
 TEST_F(PolyhedralMeshTest, Build_ClassI_Geodesic_N2_Tetrahedron) {
     GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 2);
+    NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
     
     // Check counts match expected values
     unsigned int n = 2;
@@ -466,7 +477,7 @@ TEST_F(PolyhedralMeshTest, TriangulateFacesClassI_BasicSetup) {
 TEST_F(PolyhedralMeshTest, Integration_BuildAndDualize) {
     // Build a geodesic polyhedron
     GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*octahedron, 2);
-    
+        
     // Compute a shortest path
     ComputeShortestPath(geodesic, 0, geodesic.NumCell0Ds - 1);
     
@@ -481,6 +492,7 @@ TEST_F(PolyhedralMeshTest, Integration_BuildAndDualize) {
     EXPECT_EQ(dual.NumCell0Ds, geodesic.NumCell2Ds);
     EXPECT_EQ(dual.NumCell2Ds, geodesic.NumCell0Ds);
 }
+
 // Edge case tests
 TEST_F(PolyhedralMeshTest, EdgeCase_SmallSubdivision) {
     // Test with minimum subdivision n=1
@@ -490,9 +502,11 @@ TEST_F(PolyhedralMeshTest, EdgeCase_SmallSubdivision) {
     EXPECT_EQ(geodesic.NumCell1Ds, tetrahedron->NumEdges);
     EXPECT_EQ(geodesic.NumCell2Ds, tetrahedron->NumFaces);
 }
+
 TEST_F(PolyhedralMeshTest, EdgeCase_LargerSubdivision) {
     // Test with larger subdivision to ensure scalability
     GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 4);
+    NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
     
     unsigned int n = 4;
     unsigned int T = n * n;
