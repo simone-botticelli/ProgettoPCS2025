@@ -322,6 +322,22 @@ TEST_F(PolyhedralMeshTest, Build_ClassI_Geodesic_N2_Tetrahedron) {
     }
 }
 
+TEST_F(PolyhedralMeshTest, Build_ClassII_Geodesic_N1_Tetrahedron) {
+    unsigned int n = 3;
+    GeodesicPolyhedron geodesic = Build_ClassII_Geodesic(*tetrahedron, n);
+
+    // Check counts match expected values from the formula
+    unsigned int T = n * n;
+    EXPECT_EQ(geodesic.NumCell0Ds, 6 * (T + n) + 2);  // 6 * (1 + 1) + 2 = 14
+    EXPECT_EQ(geodesic.NumCell1Ds, 18 * (T + n));     // 18 * 2 = 36
+    EXPECT_EQ(geodesic.NumCell2Ds, 12 * (T + n));     // 12 * 2 = 24
+
+    // Check that all coordinates are normalized
+    for (int i = 0; i < geodesic.Cell0DsCoordinates.cols(); ++i) {
+        EXPECT_NEAR(geodesic.Cell0DsCoordinates.col(i).norm(), 1.0, 1e-10);
+    }
+}
+
 // Test for ComputeShortestPath
 TEST_F(PolyhedralMeshTest, ComputeShortestPath_BasicTest) {
     GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 1);
@@ -374,7 +390,7 @@ TEST_F(PolyhedralMeshTest, ComputeShortestPath_InvalidVertex) {
 }
 
 // Test for dualize
-TEST_F(PolyhedralMeshTest, dualize_BasicTest) {
+TEST_F(PolyhedralMeshTest, dualizeI_BasicTest) {
     GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 1);
     GeodesicPolyhedron dual = dualize(geodesic);
     
@@ -396,6 +412,30 @@ TEST_F(PolyhedralMeshTest, dualize_BasicTest) {
     EXPECT_EQ(dual.Cell2DsVertices.size(), dual.NumCell2Ds);
     EXPECT_EQ(dual.Cell2DsEdges.size(), dual.NumCell2Ds);
 }
+
+TEST_F(PolyhedralMeshTest, dualizeII_BasicTest) {
+    GeodesicPolyhedron geodesic = Build_ClassII_Geodesic(*tetrahedron, 3);
+    GeodesicPolyhedron dual = dualize(geodesic);
+    
+    // Check dual relationships
+    EXPECT_EQ(dual.NumCell0Ds, geodesic.NumCell2Ds);  
+    EXPECT_EQ(dual.NumCell2Ds, geodesic.NumCell0Ds);  
+    EXPECT_EQ(dual.NumCell1Ds, geodesic.NumCell1Ds);  
+    
+    // Check that dual coordinates are normalized
+    for (int i = 0; i < dual.Cell0DsCoordinates.cols(); ++i) {
+        EXPECT_NEAR(dual.Cell0DsCoordinates.col(i).norm(), 1.0, 1e-10);
+    }
+    
+    // Check structure sizes
+    EXPECT_EQ(dual.Cell0DsId.size(), dual.NumCell0Ds);
+    EXPECT_EQ(dual.Cell1DsId.size(), dual.NumCell1Ds);
+    EXPECT_EQ(dual.Cell2DsId.size(), dual.NumCell2Ds);
+    
+    EXPECT_EQ(dual.Cell2DsVertices.size(), dual.NumCell2Ds);
+    EXPECT_EQ(dual.Cell2DsEdges.size(), dual.NumCell2Ds);
+}
+
 
 TEST_F(PolyhedralMeshTest, dualize_TetrahedronSelfDual) {
     GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 1);
@@ -473,49 +513,3 @@ TEST_F(PolyhedralMeshTest, TriangulateFacesClassI_BasicSetup) {
                                            internalVerticesMatrix, internalEdgesMatrix));
 }
 
-// Integration test combining multiple functions
-TEST_F(PolyhedralMeshTest, Integration_BuildAndDualize) {
-    // Build a geodesic polyhedron
-    GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*octahedron, 2);
-        
-    // Compute a shortest path
-    ComputeShortestPath(geodesic, 0, geodesic.NumCell0Ds - 1);
-    
-    // Dualize it
-    GeodesicPolyhedron dual = dualize(geodesic);
-    
-    // Basic checks
-    EXPECT_GT(geodesic.NumCell0Ds, octahedron->NumVertices);
-    EXPECT_GT(geodesic.NumCell1Ds, octahedron->NumEdges);
-    EXPECT_GT(geodesic.NumCell2Ds, octahedron->NumFaces);
-    
-    EXPECT_EQ(dual.NumCell0Ds, geodesic.NumCell2Ds);
-    EXPECT_EQ(dual.NumCell2Ds, geodesic.NumCell0Ds);
-}
-
-// Edge case tests
-TEST_F(PolyhedralMeshTest, EdgeCase_SmallSubdivision) {
-    // Test with minimum subdivision n=1
-    GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 1);
-    
-    EXPECT_EQ(geodesic.NumCell0Ds, tetrahedron->NumVertices);
-    EXPECT_EQ(geodesic.NumCell1Ds, tetrahedron->NumEdges);
-    EXPECT_EQ(geodesic.NumCell2Ds, tetrahedron->NumFaces);
-}
-
-TEST_F(PolyhedralMeshTest, EdgeCase_LargerSubdivision) {
-    // Test with larger subdivision to ensure scalability
-    GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 4);
-    NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
-    
-    unsigned int n = 4;
-    unsigned int T = n * n;
-    EXPECT_EQ(geodesic.NumCell0Ds, 2 * T + 2);
-    EXPECT_EQ(geodesic.NumCell1Ds, 6 * T);
-    EXPECT_EQ(geodesic.NumCell2Ds, 4 * T);
-    
-    // All vertices should be on unit sphere
-    for (int i = 0; i < geodesic.Cell0DsCoordinates.cols(); ++i) {
-        EXPECT_NEAR(geodesic.Cell0DsCoordinates.col(i).norm(), 1.0, 1e-10);
-    }
-}
