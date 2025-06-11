@@ -61,14 +61,6 @@ void addVertex(GeodesicPolyhedron& geodesic, unsigned int vertexId, const Vector
 
 unsigned int GetorAddEdge(GeodesicPolyhedron& geodesic, unsigned int& nextEdgeId, unsigned int originId, unsigned int endId);
 
-/*void addFace( 
-    GeodesicPolyhedron& geodesic,
-    unsigned int& nextEdgeId,
-    unsigned int faceId,
-    const vector<unsigned int>& facesVertices
-);*/
-
-// Overload per triangoli
 void addFace(
     GeodesicPolyhedron& geodesic,
     unsigned int& nextEdgeId,
@@ -96,6 +88,9 @@ void TriangulateFacesClassI(GeodesicPolyhedron& geodesic,
                                 unsigned int& nextFaceId, 
                                 const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>>& internalVerticesMatrix,
                                 const Map<Matrix<unsigned int, Dynamic, Dynamic, ColMajor>>& internalEdgesMatrix);
+
+
+GeodesicPolyhedron Build_ClassI_Solid(const PlatonicSolid& solid, const unsigned int n);
 
 GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n);
 

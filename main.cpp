@@ -68,7 +68,6 @@ int p, q, b, c;
 	
 	if (b != c) {
 	geo = PolyhedralLibrary::Build_ClassI_Geodesic(solid, b+c);
-	NormalizeMatrixColumns(geo.Cell0DsCoordinates);
 	cout << "E' stato selezionato il poliedro di classe I.\n";
 	}
 	else {

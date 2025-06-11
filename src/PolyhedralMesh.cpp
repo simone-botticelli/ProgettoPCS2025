@@ -286,29 +286,6 @@ void addFace(
     nextFaceId++;
 }
 
-/*void addFace( 
-    GeodesicPolyhedron& geodesic, 
-    unsigned int& nextEdgeId, 
-    unsigned int& nextFaceId, 
-    const vector<unsigned int>& facesVertices
-)
-{
-    int N = facesVertices.size();
-    vector<unsigned int> facesEdges(N);
-    for(int i = 0; i < N; i++){
-        // This part is fine, as GetorAddEdge handles the logic
-        unsigned int edgeId = GetorAddEdge(geodesic, nextEdgeId, facesVertices[i], facesVertices[(i + 1)%N]);
-        facesEdges[i] = edgeId;
-    }
-
-    // FIX: Use indexed assignment for the new face data
-    unsigned int newId = nextFaceId;
-    geodesic.Cell2DsId[newId] = newId;
-    geodesic.Cell2DsVertices[newId] = facesVertices;
-    geodesic.Cell2DsEdges[newId] = facesEdges;
-    
-    nextFaceId++;
-}*/
 
 void SubdividePlatonicEdges(GeodesicPolyhedron& geodesic,
                               const PlatonicSolid& solid,
@@ -565,7 +542,7 @@ void NormalizeMatrixColumns(MatrixXd& M)
 
 }
 
-GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n)
+GeodesicPolyhedron Build_ClassI_Solid(const PlatonicSolid& solid, const unsigned int n)
 {
 	GeodesicPolyhedron geodesic;
 
@@ -621,7 +598,6 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 									n, 
 									solid.NumEdges);
 			
-
 	// 6. TRIANGOLAZIONE
 		unsigned int nextFaceId = 0;
 		TriangulateFacesClassI(geodesic, solid, n,
@@ -630,19 +606,21 @@ GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsig
 							   nextFaceId,
 							   internalVerticesMatrix,
 							   internalEdgesMatrix);
-		
-		  
-	// 7. Normalizzazione
-		// NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
-	
 	return geodesic;
 	
-} // fine build_classI_Geodesic
-	
+} // fine Build_ClassI_Solid
+
+
+GeodesicPolyhedron Build_ClassI_Geodesic(const PlatonicSolid& solid, const unsigned int n)
+{
+	GeodesicPolyhedron geodesic = Build_ClassI_Solid(solid, n);
+	NormalizeMatrixColumns(geodesic.Cell0DsCoordinates);
+	return geodesic;
+}
 
 GeodesicPolyhedron Build_ClassII_Geodesic(const PlatonicSolid& solid, const unsigned int n)
 {
-	GeodesicPolyhedron GeoClassI = Build_ClassI_Geodesic(solid, n);
+	GeodesicPolyhedron GeoClassI = Build_ClassI_Solid(solid, n);
 	GeodesicPolyhedron GeoClassII;
 	// inizializzazione 
 	Initialize_ClassII_GeodesicCounts(GeoClassII, solid, n);
