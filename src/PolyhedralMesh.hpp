@@ -23,6 +23,8 @@ struct GeodesicPolyhedron
     vector<bool> Cell1DsShortPath;
 
 	map<pair<unsigned int, unsigned int>, unsigned int> ExtrematoEdge;
+	vector<vector<unsigned int>> VertextoEdges;
+	
     MatrixXd Cell0DsCoordinates;
     MatrixXi Cell1DsExtrema;
     vector<vector<unsigned int>> Cell2DsVertices;
@@ -44,6 +46,8 @@ struct PlatonicSolid
 	MatrixXi EdgesExtrema;
 	vector<vector<unsigned int>> FacesVertices;
 	vector<vector<unsigned int>> FacesEdges;
+	vector<vector<unsigned int>> VerticesEdges;
+
 	
 	PlatonicSolid(PlatonicType type);
 	
@@ -60,6 +64,8 @@ void InitializeGeodesicStorage(GeodesicPolyhedron& geodesic);
 void addVertex(GeodesicPolyhedron& geodesic, unsigned int vertexId, const VectorXd& vertexCoordinates);
 
 unsigned int GetorAddEdge(GeodesicPolyhedron& geodesic, unsigned int& nextEdgeId, unsigned int originId, unsigned int endId);
+
+void addEdge(GeodesicPolyhedron& geodesic, unsigned int newId, unsigned int originId, unsigned int endId);
 
 void addFace(
     GeodesicPolyhedron& geodesic,
@@ -99,5 +105,13 @@ GeodesicPolyhedron Build_ClassII_Geodesic(const PlatonicSolid& solid, const unsi
 void ComputeShortestPath(GeodesicPolyhedron& mesh, unsigned int source, unsigned int target);
 
 GeodesicPolyhedron dualize(const GeodesicPolyhedron& poly);
+
+int findNextEdge(
+    unsigned int currentEdge,
+    unsigned int e1,
+    unsigned int e2,
+    const vector<unsigned int>& faceEdges,
+    const MatrixXi& Cell1DsExtrema,
+    unsigned int& nextStart);
 
 }

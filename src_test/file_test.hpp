@@ -389,29 +389,176 @@ TEST_F(PolyhedralMeshTest, ComputeShortestPath_InvalidVertex) {
     EXPECT_NO_THROW(ComputeShortestPath(geodesic, 999, 0));
 }
 
-// Test for dualize
-TEST_F(PolyhedralMeshTest, dualizeI_BasicTest) {
-    GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 1);
-    GeodesicPolyhedron dual = dualize(geodesic);
-    
-    // Check dual relationships
-    EXPECT_EQ(dual.NumCell0Ds, geodesic.NumCell2Ds);  // dual vertices = original faces
-    EXPECT_EQ(dual.NumCell2Ds, geodesic.NumCell0Ds);  // dual faces = original vertices
-    EXPECT_EQ(dual.NumCell1Ds, geodesic.NumCell1Ds);  // edges remain same count
-    
-    // Check that dual coordinates are normalized
-    for (int i = 0; i < dual.Cell0DsCoordinates.cols(); ++i) {
-        EXPECT_NEAR(dual.Cell0DsCoordinates.col(i).norm(), 1.0, 1e-10);
+TEST_F(PolyhedralMeshTest, DualFaceEdgesAreCyclicallyConnected)
+{
+    GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 5);
+    GeodesicPolyhedron poly = dualize(geodesic);
+
+    for (unsigned int face : poly.Cell2DsId)
+    {
+        const auto& faceEdges = poly.Cell2DsEdges[face];
+        const auto& faceVertices = poly.Cell2DsVertices[face];
+        size_t E = faceEdges.size();
+
+        ASSERT_EQ(E, faceVertices.size()) << "Face " << face << ": mismatch between number of edges and vertices.";
+
+        // Verifica che il primo vertice sia in uno degli estremi del primo spigolo
+        unsigned int firstEdgeIdx = faceEdges[0];
+        unsigned int firstVertex = faceVertices[0];
+        ASSERT_LT(firstEdgeIdx, poly.Cell1DsExtrema.cols());
+
+        unsigned int orig0 = poly.Cell1DsExtrema(0, firstEdgeIdx);
+        unsigned int end0 = poly.Cell1DsExtrema(1, firstEdgeIdx);
+
+        EXPECT_TRUE(firstVertex == orig0 || firstVertex == end0)
+            << "Face " << face << ": vertex[0] = " << firstVertex
+            << " is not an endpoint of edge[0] = " << firstEdgeIdx;
+
+        // Per ogni coppia di spigoli consecutivi
+        for (size_t i = 0; i < E; ++i)
+        {
+            unsigned int edgeIdx1 = faceEdges[i];
+            unsigned int edgeIdx2 = faceEdges[(i + 1) % E];
+
+            ASSERT_LT(edgeIdx1, poly.Cell1DsExtrema.cols());
+            ASSERT_LT(edgeIdx2, poly.Cell1DsExtrema.cols());
+
+            // Recupera vertici associati a spigolo e1
+            unsigned int e1_v0 = poly.Cell1DsExtrema(0, edgeIdx1);
+            unsigned int e1_v1 = poly.Cell1DsExtrema(1, edgeIdx1);
+
+            // Recupera vertici associati a spigolo e2
+            unsigned int e2_v0 = poly.Cell1DsExtrema(0, edgeIdx2);
+            unsigned int e2_v1 = poly.Cell1DsExtrema(1, edgeIdx2);
+
+            // Determina la direzione locale del bordo e1
+            unsigned int face_v_i = faceVertices[i];
+            unsigned int face_v_ip1 = faceVertices[(i + 1) % E];
+
+            unsigned int e1_end = (face_v_i == e1_v0) ? e1_v1 : e1_v0;
+            unsigned int e2_start = (face_v_ip1 == e2_v0) ? e2_v0 : e2_v1;
+
+            EXPECT_EQ(e1_end, e2_start)
+                << "Face " << face << ": edge[" << i << "] ends at " << e1_end
+                << " but edge[" << (i + 1) % E << "] starts at " << e2_start
+                << ". Vertex loop = (" << face_v_i << " -> " << face_v_ip1 << ")";
+        }
     }
-    
-    // Check structure sizes
+}
+
+TEST_F(PolyhedralMeshTest, FaceEdgesAreCyclicallyConnected)
+{
+    GeodesicPolyhedron poly = Build_ClassI_Geodesic(*tetrahedron, 5);
+
+    for (unsigned int face : poly.Cell2DsId)
+    {
+        const auto& faceEdges = poly.Cell2DsEdges[face];
+        const auto& faceVertices = poly.Cell2DsVertices[face];
+        size_t E = faceEdges.size();
+
+        ASSERT_EQ(E, faceVertices.size()) << "Face " << face << ": mismatch between number of edges and vertices.";
+
+        // Verifica che il primo vertice sia in uno degli estremi del primo spigolo
+        unsigned int firstEdgeIdx = faceEdges[0];
+        unsigned int firstVertex = faceVertices[0];
+        ASSERT_LT(firstEdgeIdx, poly.Cell1DsExtrema.cols());
+
+        unsigned int orig0 = poly.Cell1DsExtrema(0, firstEdgeIdx);
+        unsigned int end0 = poly.Cell1DsExtrema(1, firstEdgeIdx);
+
+        EXPECT_TRUE(firstVertex == orig0 || firstVertex == end0)
+            << "Face " << face << ": vertex[0] = " << firstVertex
+            << " is not an endpoint of edge[0] = " << firstEdgeIdx;
+
+        // Per ogni coppia di spigoli consecutivi
+        for (size_t i = 0; i < E; ++i)
+        {
+            unsigned int edgeIdx1 = faceEdges[i];
+            unsigned int edgeIdx2 = faceEdges[(i + 1) % E];
+
+            ASSERT_LT(edgeIdx1, poly.Cell1DsExtrema.cols());
+            ASSERT_LT(edgeIdx2, poly.Cell1DsExtrema.cols());
+
+            // Recupera vertici associati a spigolo e1
+            unsigned int e1_v0 = poly.Cell1DsExtrema(0, edgeIdx1);
+            unsigned int e1_v1 = poly.Cell1DsExtrema(1, edgeIdx1);
+
+            // Recupera vertici associati a spigolo e2
+            unsigned int e2_v0 = poly.Cell1DsExtrema(0, edgeIdx2);
+            unsigned int e2_v1 = poly.Cell1DsExtrema(1, edgeIdx2);
+
+            // Determina la direzione locale del bordo e1
+            unsigned int face_v_i = faceVertices[i];
+            unsigned int face_v_ip1 = faceVertices[(i + 1) % E];
+
+            unsigned int e1_end = (face_v_i == e1_v0) ? e1_v1 : e1_v0;
+            unsigned int e2_start = (face_v_ip1 == e2_v0) ? e2_v0 : e2_v1;
+
+            EXPECT_EQ(e1_end, e2_start)
+                << "Face " << face << ": edge[" << i << "] ends at " << e1_end
+                << " but edge[" << (i + 1) % E << "] starts at " << e2_start
+                << ". Vertex loop = (" << face_v_i << " -> " << face_v_ip1 << ")";
+        }
+    }
+}
+
+// Test for dualize
+// Test dualize on a simple tetrahedral geodesic polyhedron
+TEST_F(PolyhedralMeshTest, DualizeTetrahedronGeodesic) {
+    // Costruzione geodesica base (subdivisione 1) di un tetraedro
+    GeodesicPolyhedron original = Build_ClassI_Geodesic(*tetrahedron, 2);
+    ASSERT_GT(original.NumCell0Ds, 0);
+    ASSERT_GT(original.NumCell1Ds, 0);
+    ASSERT_GT(original.NumCell2Ds, 0);
+
+    GeodesicPolyhedron dual = dualize(original);
+
+    // 1. Verifica relazioni topologiche
+    EXPECT_EQ(dual.NumCell0Ds, original.NumCell2Ds);  // vertici duali = facce originali
+    EXPECT_EQ(dual.NumCell2Ds, original.NumCell0Ds);  // facce duali = vertici originali
+    EXPECT_EQ(dual.NumCell1Ds, original.NumCell1Ds);  // lati invariati in numero
+
+    // 2. Verifica che le coordinate dei vertici duali siano normalizzate
+    for (int i = 0; i < dual.Cell0DsCoordinates.cols(); ++i) {
+        double norm = dual.Cell0DsCoordinates.col(i).norm();
+        EXPECT_NEAR(norm, 1.0, 1e-10) << "Vertex " << i << " has norm " << norm;
+    }
+
+    // 3. Verifica che ogni edge duale colleghi due vertici validi
+    for (int i = 0; i < dual.NumCell1Ds; ++i) {
+        unsigned int v0 = dual.Cell1DsExtrema(0, i);
+        unsigned int v1 = dual.Cell1DsExtrema(1, i);
+        EXPECT_LT(v0, dual.NumCell0Ds);
+        EXPECT_LT(v1, dual.NumCell0Ds);
+        EXPECT_NE(v0, v1);
+    }
+
+    // 4. Verifica struttura delle facce duali
+    for (unsigned int fid : dual.Cell2DsId) {
+        const auto& faceVerts = dual.Cell2DsVertices[fid];
+        const auto& faceEdges = dual.Cell2DsEdges[fid];
+
+        EXPECT_GT(faceVerts.size(), 2) << "Face " << fid << " has < 3 vertices";
+        EXPECT_EQ(faceVerts.size(), faceEdges.size()) 
+            << "Face " << fid << " has mismatched vertices and edges";
+        
+        for (unsigned int vid : faceVerts) {
+            EXPECT_LT(vid, dual.NumCell0Ds);
+        }
+        for (unsigned int eid : faceEdges) {
+            EXPECT_LT(eid, dual.NumCell1Ds);
+        }
+    }
+
+    // 5. Verifica dimensioni vettori coerenti
     EXPECT_EQ(dual.Cell0DsId.size(), dual.NumCell0Ds);
     EXPECT_EQ(dual.Cell1DsId.size(), dual.NumCell1Ds);
     EXPECT_EQ(dual.Cell2DsId.size(), dual.NumCell2Ds);
-    
+
     EXPECT_EQ(dual.Cell2DsVertices.size(), dual.NumCell2Ds);
     EXPECT_EQ(dual.Cell2DsEdges.size(), dual.NumCell2Ds);
 }
+
 
 TEST_F(PolyhedralMeshTest, dualizeII_BasicTest) {
     GeodesicPolyhedron geodesic = Build_ClassII_Geodesic(*tetrahedron, 3);
@@ -448,6 +595,7 @@ TEST_F(PolyhedralMeshTest, dualize_TetrahedronSelfDual) {
     EXPECT_EQ(dual_dual.NumCell1Ds, geodesic.NumCell1Ds);
     EXPECT_EQ(dual_dual.NumCell2Ds, geodesic.NumCell2Ds);
 }
+*/
 
 // Test for SubdividePlatonicEdges
 TEST_F(PolyhedralMeshTest, SubdividePlatonicEdges_BasicTest) {
