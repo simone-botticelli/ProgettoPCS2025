@@ -30,6 +30,7 @@ package "PolyhedralLibrary" {
         +MatrixXi EdgesExtrema
         +vector<vector<unsigned int>> FacesVertices
         +vector<vector<unsigned int>> FacesEdges
+        +vector<vector<unsigned int>> VerticesEdges
         --
         +PlatonicSolid(PlatonicType type)
     }
@@ -45,6 +46,7 @@ package "PolyhedralLibrary" {
         +vector<bool> Cell0DsShortPath
         +vector<bool> Cell1DsShortPath
         +map<pair<unsigned int, unsigned int>, unsigned int> ExtrematoEdge
+        +vector<vector<unsigned int>> VertextoEdges
         +MatrixXd Cell0DsCoordinates
         +MatrixXi Cell1DsExtrema
         +vector<vector<unsigned int>> Cell2DsVertices
@@ -54,55 +56,7 @@ package "PolyhedralLibrary" {
     ' Relazioni tra classi reali
     PlatonicSolid *-- PlatonicType : contains
     
-    ' Funzioni globali raggruppate per categoria
-    note as InitNote
-        **Initialization Functions**
-        • Initialize_ClassI_GeodesicCounts()
-        • Initialize_ClassII_GeodesicCounts()
-        • InitializeGeodesicStorage()
-    end note
-    
-    note as GeomNote
-        **Geometry Functions**
-        • addVertex()
-        • GetorAddEdge()
-        • addFace()
-        • ComputePointOnTriangle()
-        • NormalizeMatrixColumns()
-    end note
-    
-    note as SubdivNote
-        **Subdivision Functions**
-        • SubdividePlatonicEdges()
-        • TriangulateFacesClassI()
-    end note
-    
-    note as BuildNote
-        **Construction Functions**
-        • Build_ClassI_Geodesic()
-        • Build_ClassII_Geodesic()
-    end note
-    
-    note as AnalysisNote
-        **Analysis Functions**
-        • ComputeShortestPath()
-        • dualize()
-    end note
-    
-    ' Connessioni tra funzioni e classi
-    InitNote .. PlatonicSolid : reads
-    InitNote .. GeodesicPolyhedron : initializes
-    
-    GeomNote .. GeodesicPolyhedron : modifies
-    
-    SubdivNote .. PlatonicSolid : uses
-    SubdivNote .. GeodesicPolyhedron : creates
-    
-    BuildNote .. PlatonicSolid : input
-    BuildNote .. GeodesicPolyhedron : output
-    
-    AnalysisNote .. GeodesicPolyhedron : analyzes
-    
+  
 }
 
 package Gedim <<Frame>>
