@@ -1,0 +1,135 @@
+@startuml
+!theme plain
+skinparam backgroundColor white
+skinparam class {
+    BackgroundColor lightblue
+    BorderColor black
+    ArrowColor black
+}
+skinparam stereotype {
+    CBackgroundColor lightyellow
+}
+
+package "PolyhedralLibrary" {
+    
+    enum PlatonicType {
+        TETRAHEDRON
+        OCTAHEDRON
+        ICOSAHEDRON
+    }
+    
+    class PlatonicSolid {
+        +const PlatonicType Type
+        +unsigned int NumVertices
+        +unsigned int NumEdges
+        +unsigned int NumFaces
+        +vector<unsigned int> VerticesId
+        +vector<unsigned int> EdgesId
+        +vector<unsigned int> FacesId
+        +MatrixXd VerticesCoordinates
+        +MatrixXi EdgesExtrema
+        +vector<vector<unsigned int>> FacesVertices
+        +vector<vector<unsigned int>> FacesEdges
+        --
+        +PlatonicSolid(PlatonicType type)
+    }
+    
+    class GeodesicPolyhedron {
+        +unsigned int NumCell0Ds
+        +unsigned int NumCell1Ds
+        +unsigned int NumCell2Ds
+        +vector<unsigned int> Cell0DsId
+        +vector<unsigned int> Cell1DsId
+        +vector<unsigned int> Cell2DsId
+        +unsigned int Cell3DsId
+        +vector<bool> Cell0DsShortPath
+        +vector<bool> Cell1DsShortPath
+        +map<pair<unsigned int, unsigned int>, unsigned int> ExtrematoEdge
+        +MatrixXd Cell0DsCoordinates
+        +MatrixXi Cell1DsExtrema
+        +vector<vector<unsigned int>> Cell2DsVertices
+        +vector<vector<unsigned int>> Cell2DsEdges
+    }
+    
+    ' Relazioni tra classi reali
+    PlatonicSolid *-- PlatonicType : contains
+    
+    ' Funzioni globali raggruppate per categoria
+    note as InitNote
+        **Initialization Functions**
+        • Initialize_ClassI_GeodesicCounts()
+        • Initialize_ClassII_GeodesicCounts()
+        • InitializeGeodesicStorage()
+    end note
+    
+    note as GeomNote
+        **Geometry Functions**
+        • addVertex()
+        • GetorAddEdge()
+        • addFace()
+        • ComputePointOnTriangle()
+        • NormalizeMatrixColumns()
+    end note
+    
+    note as SubdivNote
+        **Subdivision Functions**
+        • SubdividePlatonicEdges()
+        • TriangulateFacesClassI()
+    end note
+    
+    note as BuildNote
+        **Construction Functions**
+        • Build_ClassI_Geodesic()
+        • Build_ClassII_Geodesic()
+    end note
+    
+    note as AnalysisNote
+        **Analysis Functions**
+        • ComputeShortestPath()
+        • dualize()
+    end note
+    
+    ' Connessioni tra funzioni e classi
+    InitNote .. PlatonicSolid : reads
+    InitNote .. GeodesicPolyhedron : initializes
+    
+    GeomNote .. GeodesicPolyhedron : modifies
+    
+    SubdivNote .. PlatonicSolid : uses
+    SubdivNote .. GeodesicPolyhedron : creates
+    
+    BuildNote .. PlatonicSolid : input
+    BuildNote .. GeodesicPolyhedron : output
+    
+    AnalysisNote .. GeodesicPolyhedron : analyzes
+    
+}
+
+package Gedim <<Frame>>
+{
+
+}
+
+
+' PlotPolygon relies upon Gedim
+MainApplication --> Gedim : uses
+
+note bottom of Gedim : This is an external library
+
+class MainApplication {
+    {static} +main(argc: int, argv: char*[]): int
+    --
+    Workflow:
+    1. Parse command line arguments
+    2. Create PlatonicSolid
+    3. Build GeodesicPolyhedron
+    4. Compute shortest path (optional)
+    5. Export to UCD format
+}
+
+' Dipendenze del main
+MainApplication --> PlatonicSolid : creates
+MainApplication --> GeodesicPolyhedron : creates
+
+
+@enduml
