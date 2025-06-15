@@ -338,6 +338,45 @@ TEST_F(PolyhedralMeshTest, Build_ClassII_Geodesic_N1_Tetrahedron) {
     }
 }
 
+TEST_F(PolyhedralMeshTest, AllEdgesLongerThanMinimum) {
+    GeodesicPolyhedron poly = Build_ClassI_Geodesic(*tetrahedron, 3);
+
+    const double minimumEdgeLength = 1e-7;
+
+    for (unsigned int edge : poly.Cell1DsId) {
+        unsigned int v1 = poly.Cell1DsExtrema(0, edge);
+        unsigned int v2 = poly.Cell1DsExtrema(1, edge);
+
+        Eigen::VectorXd p1 = poly.Cell0DsCoordinates.col(v1);
+        Eigen::VectorXd p2 = poly.Cell0DsCoordinates.col(v2);
+
+        double length = (p2 - p1).norm();
+
+        EXPECT_GT(length, minimumEdgeLength) << "Edge " << edge << " too short: length = " << length;
+    }
+}
+
+TEST_F(PolyhedralMeshTest, AllFacesHaveMinimumArea) {
+    GeodesicPolyhedron poly = Build_ClassII_Geodesic(*tetrahedron, 10);
+
+    const double minimumFaceArea = 1e-14;
+
+    for (unsigned int face : poly.Cell2DsId) {
+        const std::vector<unsigned int>& verts = poly.Cell2DsVertices[face];
+        ASSERT_EQ(verts.size(), 3) << "Face " << face << " does not have 3 vertices";
+
+        const Eigen::Vector3d& A = poly.Cell0DsCoordinates.col(verts[0]);
+        const Eigen::Vector3d& B = poly.Cell0DsCoordinates.col(verts[1]);
+        const Eigen::Vector3d& C = poly.Cell0DsCoordinates.col(verts[2]);
+
+        double area = 0.5 * ((B - A).cross(C - A)).norm();
+
+        EXPECT_GT(area, minimumFaceArea) << "Face " << face << " has small area: " << area;
+    }
+}
+
+
+
 // Test for ComputeShortestPath
 TEST_F(PolyhedralMeshTest, ComputeShortestPath_BasicTest) {
     GeodesicPolyhedron geodesic = Build_ClassI_Geodesic(*tetrahedron, 1);
