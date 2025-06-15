@@ -502,6 +502,32 @@ TEST_F(PolyhedralMeshTest, FaceEdgesAreCyclicallyConnected)
     }
 }
 
+TEST(GeodesicUtilsTest, FindNextEdge_UnorderedEdges) {
+    std::vector<unsigned int> faceEdges = {0, 1, 2};
+
+    Eigen::MatrixXi Cell1DsExtrema(2, 3);
+    Cell1DsExtrema(0, 0) = 1; Cell1DsExtrema(1, 0) = 0;  // edge 0
+    Cell1DsExtrema(0, 1) = 2; Cell1DsExtrema(1, 1) = 1;  // edge 1
+    Cell1DsExtrema(0, 2) = 0; Cell1DsExtrema(1, 2) = 2;  // edge 2
+
+    unsigned int nextStart;
+
+    int e = findNextEdge(0, 1, 0, faceEdges, Cell1DsExtrema, nextStart);
+    EXPECT_EQ(e, 2);
+    EXPECT_EQ(nextStart, 0);
+
+    e = findNextEdge(2, 0, 2, faceEdges, Cell1DsExtrema, nextStart);
+    EXPECT_EQ(e, 1);
+    EXPECT_EQ(nextStart, 2);
+
+    e = findNextEdge(1, 2, 1, faceEdges, Cell1DsExtrema, nextStart);
+    EXPECT_EQ(e, 0);
+    EXPECT_EQ(nextStart, 1);
+}
+
+
+
+
 // Test for dualize
 // Test dualize on a simple tetrahedral geodesic polyhedron
 TEST_F(PolyhedralMeshTest, DualizeTetrahedronGeodesic) {
@@ -595,7 +621,7 @@ TEST_F(PolyhedralMeshTest, dualize_TetrahedronSelfDual) {
     EXPECT_EQ(dual_dual.NumCell1Ds, geodesic.NumCell1Ds);
     EXPECT_EQ(dual_dual.NumCell2Ds, geodesic.NumCell2Ds);
 }
-*/
+
 
 // Test for SubdividePlatonicEdges
 TEST_F(PolyhedralMeshTest, SubdividePlatonicEdges_BasicTest) {
